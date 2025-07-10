@@ -1,13 +1,13 @@
 # Agentic-Hackathon
 
-Step 1:  Install Dependencies
+**Step 1:  Install Dependencies**
 
 python -m venv venv
 venv\Scripts\activate   # On Windows
 source venv/bin/activate  # On Mac/Linux
 pip install -r requirements.txt
 
-Step 2: Configure AWS Access
+**Step 2: Configure AWS Access**
 
 Edit the `.env` file in the root folder:
 
@@ -19,7 +19,7 @@ AWS_REGION=us-east-1
 
 BEDROCK_MODEL_ID=amazon.titan-text-premier-v1:0 // You can use other models as well 
 
-Step 3: Run the agent and type your prompt:
+**Step 3: Run the agent and type your prompt:**
 python dinein_reservation_agent.py
 
 Example input:
