@@ -5,10 +5,10 @@ import boto3
 from pydantic import BaseModel
 from typing import List, Optional
 
-# Load environment variables
+# ---------- Load Environment Variables ----------
 load_dotenv()
 
-# ---------- MCP CONTEXT ----------
+# ---------- MCP Contexts ----------
 class GuestProfileContext(BaseModel):
     guest_id: str
     loyalty_status: str
@@ -21,7 +21,7 @@ class DiningReservationContext(BaseModel):
     table_type: Optional[str] = "standard"
     status: str = "pending"
 
-# ---------- AWS BEDROCK CLIENT ----------
+# ---------- AWS Bedrock Client ----------
 bedrock = boto3.client("bedrock-runtime", region_name=os.getenv("AWS_REGION"))
 
 def invoke_nova(prompt: str):
@@ -35,7 +35,7 @@ def invoke_nova(prompt: str):
         }
     }
     response = bedrock.invoke_model(
-        modelId="amazon.titan-text-premier-v1:0",
+        modelId="amazon.titan-text-premier-v1:0",  # e.g. "amazon.nova-premier-v1:0"
         contentType="application/json",
         accept="application/json",
         body=json.dumps(body)
@@ -43,7 +43,7 @@ def invoke_nova(prompt: str):
     result = json.loads(response["body"].read())
     return result["results"][0]["outputText"]
 
-# ---------- RESERVATION LOGIC ----------
+# ---------- Table Availability Logic ----------
 def check_table_availability(date, time, party_size, table_type):
     with open("data/table_layout.json") as f:
         tables = json.load(f)["tables"]
@@ -64,6 +64,7 @@ def check_table_availability(date, time, party_size, table_type):
 
     return available
 
+# ---------- Reservation Handling ----------
 def reserve_table(ctx: DiningReservationContext):
     available = check_table_availability(ctx.date, ctx.time, ctx.party_size, ctx.table_type)
     if available:
@@ -86,28 +87,38 @@ def reserve_table(ctx: DiningReservationContext):
         ctx.status = "waitlisted"
         return "❌ No table available. You’ve been added to the waitlist."
 
-# ---------- MAIN FLOW ----------
+# ---------- Main Execution ----------
 if __name__ == "__main__":
     print("🛎️ Welcome to Hotel Dining Reservation Assistant!")
     user_input = input("🗣️ How can I help you today?\n> ")
 
-    prompt = f"""
-    Extract the structured reservation data from this customer message:
-    \"{user_input}\"
+    # Step 1: Prompt Nova to extract structured data
+    reservation_prompt  = f"""
+You are a helpful assistant. Extract reservation details from the user message below.
 
-    Respond ONLY with a valid JSON in this format:
-    {{
-      "party_size": int,
-      "table_type": "booth" | "window" | "bar" | "standard" | "any",
-      "date": "YYYY-MM-DD",
-      "time": "HH:MM"
-    }}
+Customer: "{user_input}"
 
-    If anything is missing, guess default values: table_type='any', time='19:00', date='2025-07-15'
-    """
+Respond ONLY with valid JSON in this exact format:
+{{
+  "party_size": 2,
+  "table_type": "any",
+  "date": "2025-07-15",
+  "time": "19:00"
+}}
 
-    response_text = invoke_nova(prompt)
+- If any detail is missing, use defaults:
+  - party_size: 2
+  - table_type: "any"
+  - date: "2025-07-15"
+  - time: "19:00"
 
+❗IMPORTANT: Do not include any explanation, code comments, or Markdown. Only return the JSON object.
+"""
+
+
+    response_text = invoke_nova(reservation_prompt)
+
+    # Step 2: Parse JSON response
     try:
         extracted = json.loads(response_text)
     except json.JSONDecodeError:
@@ -115,6 +126,7 @@ if __name__ == "__main__":
         print("Raw response:", response_text)
         exit(1)
 
+    # Step 3: Build context from structured data
     ctx = DiningReservationContext(
         date=extracted["date"],
         time=extracted["time"],
@@ -122,13 +134,15 @@ if __name__ == "__main__":
         table_type=extracted["table_type"]
     )
 
+    # Step 4: Reserve table based on availability
     logic_response = reserve_table(ctx)
 
+    # Step 5: Ask Nova to generate polite confirmation
     confirmation_prompt = f"""
     You are a polite and helpful hotel dining reservation assistant.
-    A guest asked: \"{user_input}\"
-    System response: {logic_response}
-    Generate a friendly confirmation or apology.
+    A guest said: \"{user_input}\"
+    The system action was: \"{logic_response}\"
+    Please generate a friendly confirmation or apology message for the guest.
     """
 
     ai_response = invoke_nova(confirmation_prompt)
