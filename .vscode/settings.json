@@ -1,0 +1,17 @@
+{
+  // Enable GitHub Copilot inline suggestions for all file types
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": true,
+    "markdown": true,
+    "scminput": false
+  },
+  // Enable Copilot Chat Agent Mode (shows "Agent" option in the Chat panel mode dropdown)
+  "chat.agent.enabled": true,
+  // Allow the agent to use extended reasoning/thinking steps for complex tasks
+  "github.copilot.chat.agent.thinkingTool": true,
+  // Enable codebase-wide semantic search for more accurate agent responses
+  "github.copilot.chat.codesearch.enabled": true,
+  // Enable Copilot Edits so the agent can propose multi-file code changes
+  "github.copilot.chat.edits.enabled": true
+}
